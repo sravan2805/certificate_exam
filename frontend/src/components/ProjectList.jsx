@@ -1,38 +1,30 @@
-import React, { useEffect, useState } from 'react';
-import API from '../api';
+import React from "react";
+import axios from "axios";
 
-const ProjectList = () => {
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const response = await API.get('/projects');
-        setProjects(response.data);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching projects:', error.message);
-      }
-    };
-
-    fetchProjects();
-  }, []);
-
-  if (loading) {
-    return <p>Loading projects...</p>;
-  }
+const ProjectList = ({ projects, fetchProjects, setError }) => {
+  const deleteProject = async (id) => {
+    try {
+      await axios.delete(`/api/projects/${id}`);
+      fetchProjects();
+    } catch (err) {
+      console.error("Error deleting project:", err.message);
+      setError("Failed to delete the project.");
+    }
+  };
 
   return (
     <div>
-      <h2>Project List</h2>
-      {projects.map((project) => (
-        <div key={project._id} style={{ border: '1px solid #ccc', margin: '10px', padding: '10px' }}>
-          <h3>{project.title}</h3>
-          <p>{project.description}</p>
-          <p><strong>Deadline:</strong> {new Date(project.deadline).toLocaleDateString()}</p>
-        </div>
-      ))}
+      <h2>Projects</h2>
+      <ul>
+        {projects.map((project) => (
+          <li key={project._id}>
+            <h3>{project.title}</h3>
+            <p>{project.description}</p>
+            <p>Deadline: {project.deadline}</p>
+            <button onClick={() => deleteProject(project._id)}>Delete</button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };
