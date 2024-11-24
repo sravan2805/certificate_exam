@@ -1,41 +1,65 @@
 import User from '../models/User.js';
 
-// Signup Controller
+// Register a new user
 export const registerUser = async (req, res) => {
   const { name, email, password } = req.body;
 
+  // Log the received request body
+  console.log('Request body:', req.body);
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
+
   try {
+    // Check if the email is already registered
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: 'Email already in use' });
     }
 
-    const user = await User.create({ name, email, password });
+    // Save new user
+    const newUser = new User({ name, email, password });
+    const savedUser = await newUser.save();
 
-    req.session.userId = user._id; // Save user ID in session
-    res.status(201).json({ message: 'User registered successfully', userId: user._id });
+    res.status(201).json({ message: 'User registered successfully', user: savedUser });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Login Controller
+import bcrypt from 'bcrypt';
+
+// Login a user
 export const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
-  try {
-    const user = await User.findOne({ email });
+  // Validate input
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required' });
+  }
 
-    if (user && (await user.matchPassword(password))) {
-      req.session.userId = user._id; // Save user ID in session
-      res.json({ message: 'Login successful', userId: user._id });
-    } else {
-      res.status(401).json({ message: 'Invalid email or password' });
+  try {
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
+
+    // Compare hashed password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Set user session
+    req.session.user = { id: user._id, name: user.name };
+    res.status(200).json({ message: 'Login successful', user: { id: user._id, name: user.name } });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
+
 
 // Logout Controller
 export const logoutUser = async (req, res) => {
